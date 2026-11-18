@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0e1116">
+<title>点云巡检工作台 · 建筑病害标注与报告</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0e1116; --panel:#151a21; --panel2:#1b222c; --line:#262f3b;
+  --tx:#e6e9ef; --tx2:#96a1b3; --tx3:#5f6b7d;
+  --acc:#4da3ff; --warn:#ffb020; --danger:#ff5c5c; --ok:#38d39f;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.55}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* 顶栏 */
+.topbar{height:52px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);z-index:20}
+.logo{width:26px;height:26px;flex:0 0 auto}
+.brand{font-size:14px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+.brand em{font-style:normal;color:var(--tx3);font-weight:400;font-size:12px;margin-left:8px}
+.badge{font-size:11px;color:var(--warn);border:1px solid rgba(255,176,32,.35);background:rgba(255,176,32,.08);
+  padding:2px 7px;border-radius:4px;white-space:nowrap}
+.spacer{flex:1}
+.metrics{display:flex;gap:14px;font-size:11.5px;color:var(--tx2);white-space:nowrap}
+.metrics b{color:var(--tx);font-weight:600}
+.btn{height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--tx);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:.15s}
+.btn:hover{background:#222b36;border-color:#31404f}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#08121f;font-weight:600}
+.btn.primary:hover{background:#63b2ff}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* 主体 */
+.main{flex:1;display:flex;min-height:0;position:relative}
+.side{width:292px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--line);
+  overflow-y:auto;overflow-x:hidden;padding-bottom:20px;z-index:10}
+.side::-webkit-scrollbar{width:6px}
+.side::-webkit-scrollbar-thumb{background:#2b3542;border-radius:3px}
+.block{padding:12px 14px;border-bottom:1px solid var(--line)}
+.block h3{font-size:11px;color:var(--tx3);font-weight:600;letter-spacing:1px;margin-bottom:9px}
+.kv{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);margin-bottom:5px}
+.kv b{color:var(--tx);font-weight:600}
+
+/* 模式切换 */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mode{padding:7px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--tx2);font-size:12px;cursor:pointer;text-align:center;transition:.15s}
+.mode:hover{border-color:#31404f;color:var(--tx)}
+.mode.on{background:rgba(77,163,255,.14);border-color:var(--acc);color:#9ecbff;font-weight:600}
+
+/* 统计 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 6px;text-align:center}
+.stat b{display:block;font-size:17px;font-weight:600;line-height:1.2}
+.stat span{font-size:10px;color:var(--tx3)}
+.bars{margin-top:4px}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11.5px;color:var(--tx2)}
+.bar .nm{width:56px;flex:0 0 auto}
+.bar .track{flex:1;height:6px;background:#212934;border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:var(--acc);border-radius:3px;transition:width .3s}
+.bar .v{width:20px;text-align:right;color:var(--tx);font-weight:600}
+
+/* 列表 */
+.list{max-height:none}
+.item{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 9px;margin-bottom:6px;
+  display:flex;gap:8px;align-items:flex-start;cursor:pointer;transition:.15s}
+.item:hover{border-color:#33414f}
+.item .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;margin-top:6px}
+.item .body{flex:1;min-width:0}
+.item .t1{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.item .t1 i{font-style:normal;font-size:10px;padding:0 5px;border-radius:3px;font-weight:600}
+.lv1{background:rgba(56,211,159,.15);color:#38d39f}
+.lv2{background:rgba(255,176,32,.15);color:#ffb020}
+.lv3{background:rgba(255,92,92,.15);color:#ff5c5c}
+.item .t2{font-size:11px;color:var(--tx3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .acts{display:flex;gap:4px;flex:0 0 auto}
+.mini{width:22px;height:22px;border-radius:5px;border:1px solid var(--line);background:#1f2734;color:var(--tx2);
+  font-size:12px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+.mini:hover{color:#fff;border-color:#3a4a5c}
+.mini.ok:hover{color:var(--ok);border-color:var(--ok)}
+.mini.no:hover{color:var(--danger);border-color:var(--danger)}
+.empty{font-size:11.5px;color:var(--tx3);padding:10px 0;text-align:center}
+
+/* 视图 */
+.view{flex:1;position:relative;min-width:0;background:radial-gradient(120% 90% at 50% 0%,#16202c 0%,#0b0f14 70%)}
+#gl{display:block;width:100%;height:100%}
+.hud{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--tx3);line-height:1.7;pointer-events:none}
+.hud b{color:var(--tx2);font-weight:600}
+.legend{position:absolute;right:14px;bottom:14px;background:rgba(21,26,33,.88);border:1px solid var(--line);
+  border-radius:8px;padding:9px 11px;font-size:10.5px;color:var(--tx2);backdrop-filter:blur(6px)}
+.legend .ramp{height:8px;border-radius:4px;margin:5px 0 4px;width:150px;
+  background:linear-gradient(90deg,#2b6cff 0%,#38d39f 35%,#ffd23f 68%,#ff5c5c 100%)}
+.legend .row{display:flex;justify-content:space-between;width:150px}
+
+/* 扫描进度 */
+.scanbar{position:absolute;left:50%;transform:translateX(-50%);top:14px;width:min(420px,80%);
+  background:rgba(21,26,33,.92);border:1px solid var(--line);border-radius:8px;padding:9px 12px;display:none;backdrop-filter:blur(6px)}
+.scanbar.on{display:block}
+.scanbar .line{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-bottom:6px}
+.scanbar .track{height:4px;background:#232c38;border-radius:2px;overflow:hidden}
+.scanbar .fill{height:100%;width:0;background:var(--acc);transition:width .1s linear}
+
+/* 标注浮层 */
+.pop{position:absolute;width:230px;background:var(--panel);border:1px solid #33414f;border-radius:9px;
+  padding:11px;display:none;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.pop.on{display:block}
+.pop h4{font-size:12px;margin-bottom:8px;color:var(--tx)}
+.pop label{display:block;font-size:10.5px;color:var(--tx3);margin:6px 0 3px}
+.pop select,.pop input{width:100%;height:26px;background:#11161d;border:1px solid var(--line);border-radius:5px;
+  color:var(--tx);font-size:12px;padding:0 7px;font-family:inherit;outline:none}
+.pop select:focus,.pop input:focus{border-color:var(--acc)}
+.pop .row2{display:flex;gap:6px;margin-top:10px}
+.pop .row2 .btn{flex:1;height:28px}
+
+/* 标签 */
+.label3d{position:absolute;font-size:10.5px;color:#0b0f14;background:var(--warn);padding:1px 5px;border-radius:3px;
+  transform:translate(-50%,-150%);pointer-events:none;white-space:nowrap;font-weight:700;display:none}
+.label3d.user{background:#ff8a3d}
+.label3d.rev{background:rgba(56,211,159,.9)}
+
+/* 弹窗 */
+.modal{position:fixed;inset:0;background:rgba(6,9,13,.72);display:none;align-items:center;justify-content:center;z-index:80;padding:20px}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border:1px solid #33414f;border-radius:12px;max-width:560px;width:100%;
+  max-height:86vh;overflow-y:auto;padding:20px 22px}
+.modal h2{font-size:15px;margin-bottom:4px}
+.modal .sub{font-size:11.5px;color:var(--tx3);margin-bottom:14px}
+.modal h3{font-size:11px;color:var(--tx3);letter-spacing:1px;margin:14px 0 6px}
+.modal p,.modal li{font-size:12.5px;color:var(--tx2);line-height:1.75}
+.modal ul{padding-left:16px}
+.modal code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:#9ecbff;background:#11161d;padding:1px 5px;border-radius:3px}
+.modal .close{float:right;cursor:pointer;color:var(--tx3);font-size:16px;line-height:1}
+/* 移动端 */
+.mtoggle{display:none}
+@media(max-width:820px){
+  .brand em{display:none}
+  .metrics{display:none}
+  .side{position:absolute;left:0;top:0;bottom:0;width:270px;transform:translateX(-100%);transition:transform .25s;box-shadow:0 0 30px rgba(0,0,0,.5)}
+  .side.open{transform:none}
+  .mtoggle{display:flex}
+  .legend{display:none}
+  .topbar{gap:6px;padding:0 9px}
+  .brand{font-size:12.5px}
+  .topbar .btn{padding:0 8px;font-size:11.5px}
+  #btnImport,#btnAbout{display:none}
+}
+</style></head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <svg class="logo" viewBox="0 0 32 32"><path d="M16 2 L29 9.5 L29 22.5 L16 30 L3 22.5 L3 9.5 Z" fill="none" stroke="#4da3ff" stroke-width="1.6"/><circle cx="16" cy="16" r="3.2" fill="#4da3ff"/><path d="M16 16 L29 9.5 M16 16 L3 9.5 M16 16 L16 30" stroke="#4da3ff" stroke-width="0.8" opacity=".5"/></svg>
+    <div class="brand">点云巡检工作台<em>建筑病害标注 · 偏差分析 · 报告输出</em></div>
+    <div class="badge">演示数据</div>
+    <div class="spacer"></div>
+    <div class="metrics">
+      <span>点数 <b id="mPts">—</b></span>
+      <span>文件 <b id="mSize">—</b></span>
+      <span>FPS <b id="mFps">—</b></span>
+    </div>
+    <button class="btn mtoggle" id="btnMenu">面板</button>
+    <button class="btn" id="btnAbout">关于</button>
+    <button class="btn" id="btnImport">导入点云</button>
+    <button class="btn primary" id="btnScan">SLAM 扫描回放</button>
+  </div>
+
+  <div class="main">
+    <aside class="side" id="side">
+      <div class="block">
+        <h3>工程概况</h3>
+        <div class="kv"><span>项目</span><b>青苔片区建筑外立面</b></div>
+        <div class="kv"><span>采集设备</span><b>手持 SLAM · 10mm 档</b></div>
+        <div class="kv"><span>点云精度</span><b>±6 mm</b></div>
+        <div class="kv"><span>立面尺寸</span><b>24.0 × 13.0 m</b></div>
+        <div class="kv"><span>采集日期</span><b>2026-11-18</b></div>
+      </div>
+
+      <div class="block">
+        <h3>显示模式</h3>
+        <div class="modes" id="modes">
+          <div class="mode on" data-m="rgb">真彩</div>
+          <div class="mode" data-m="h">高度</div>
+          <div class="mode" data-m="i">反射强度</div>
+          <div class="mode" data-m="dev">偏差色谱</div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>病害统计</h3>
+        <div class="stats">
+          <div class="stat"><b id="sAll">0</b><span>总计</span></div>
+          <div class="stat"><b id="sDone" style="color:#38d39f">0</b><span>已复核</span></div>
+          <div class="stat"><b id="sMax" style="color:#ff5c5c">0</b><span>最大偏差 mm</span></div>
+        </div>
+        <div class="bars" id="bars"></div>
+      </div>
+
+      <div class="block">
+        <h3>病害清单 <span id="listCnt" style="color:#5f6b7d;font-weight:400"></span></h3>
+        <div class="list" id="list"></div>
+      </div>
+
+      <div class="block" style="border-bottom:none">
+        <h3>输出</h3>
+        <button class="btn" style="width:100%;margin-bottom:6px" id="btnReport">生成巡检报告</button>
+        <button class="btn" style="width:100%;margin-bottom:6px" id="btnCsv">导出病害清单 CSV</button>
+        <button class="btn" style="width:100%;margin-bottom:6px" id="btnImport2">导入自有 .ply / .xyz</button>
+        <button class="btn" style="width:100%" id="btnAbout2">关于本演示</button>
+      </div>
+    </aside>
+
+    <div class="view" id="view">
+      <canvas id="gl"></canvas>
+      <div class="scanbar" id="scanbar">
+        <div class="line"><span>SLAM 扫描中 · 边走边建</span><span id="scanTxt">0%</span></div>
+        <div class="track"><div class="fill" id="scanFill"></div></div>
+      </div>
+      <div class="hud">
+        <div><b>左键拖拽</b> 旋转 · <b>滚轮</b> 缩放 · <b>右键</b> 平移</div>
+        <div><b>单击点云</b> 新增病害标注 · <b>双击</b> 复位视角</div>
+      </div>
+      <div class="legend" id="legend">
+        <div id="legendTitle">偏差色谱（相对设计立面）</div>
+        <div class="ramp"></div>
+        <div class="row"><span>0</span><span>3</span><span>6</span><span>10 mm</span></div>
+      </div>
+      <div class="pop" id="pop">
+        <h4>新增病害标注</h4>
+        <label>病害类型</label>
+        <select id="fType">
+          <option>裂缝</option><option>空鼓</option><option>渗水</option>
+          <option>幕墙错位</option><option>钢筋外露</option><option>其他</option>
+        </select>
+        <label>严重等级</label>
+        <select id="fLevel"><option value="Ⅰ">Ⅰ 级（轻微）</option><option value="Ⅱ" selected>Ⅱ 级（一般）</option><option value="Ⅲ">Ⅲ 级（严重）</option></select>
+        <label>尺寸 / 描述</label>
+        <input id="fSize" placeholder="如：长 1.2 m / 宽 2 mm">
+        <div class="row2">
+          <button class="btn" id="fCancel">取消</button>
+          <button class="btn primary" id="fSave">保存标注</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="aboutModal">
+  <div class="box">
+    <span class="close" id="aboutClose">✕</span>
+    <h2>关于这个原型</h2>
+    <div class="sub">一个面向「手持 SLAM 点云 + 建筑病害巡检」的 Web 端工作流演示</div>
+    <h3>为什么做它</h3>
+    <p>看完智眸三维的几篇推文（手持 SLAM 边走边扫、点云与 BIM 偏差比对），我按他们的业务链路做了一个能跑起来的原型：
+    扫描回放 → 点云浏览 → AI 预标注 → 人工复核 → 输出巡检报告。不是界面稿，是真的能点的系统。</p>
+    <h3>技术栈</h3>
+    <ul>
+      <li>渲染：<code>three.js</code> WebGL 点云，单批 22 万点、<code>BufferGeometry</code> 顶点色</li>
+      <li>自定义轨道控制：旋转 / 缩放 / 平移 / 触摸双指，无第三方控制器依赖</li>
+      <li>二进制点云解析：<code>Float32</code> 坐标 + <code>Uint8</code> 颜色/强度/扫描序号，按扫描序号重排后 <code>setDrawRange</code> 实现增量显示</li>
+      <li>拾取：<code>Raycaster</code> + 点云阈值，点击即落点标注</li>
+      <li>数据：程序化生成的建筑立面（24×13 m，4 cm 点距，±1.5 mm 噪声），含 3 条裂缝、2 处空鼓、1 处渗水、1 处幕墙错台、1 处钢筋外露</li>
+      <li>导出：巡检报告 Markdown、病害清单 CSV（带 BOM，Excel 直接打开不乱码）</li>
+    </ul>
+    <h3>还能接什么</h3>
+    <ul>
+      <li>导入自有 <code>.ply / .xyz / .csv</code> 点云（已实现，拖进「导入点云」即可）</li>
+      <li>下一步：PotreeConverter 切片 + 八叉树 LOD，支撑上亿点在线浏览</li>
+      <li>下一步：点云与 BIM 模型配准（ICP）、构件级偏差色谱</li>
+      <li>下一步：多人在线协作标注、标注任务分派与质检</li>
+    </ul>
+    <h3>说明</h3>
+    <p>本页面为个人学习原型，与苏州宏观智眸科技有限责任公司无隶属关系，数据为程序生成的演示数据，不代表任何真实项目。</p>
+  </div>
+</div>
+<input type="file" id="fileIn" accept=".xyz,.txt,.csv,.ply" style="display:none">
+<script src="three.min.js"></script>
+<script src="app.js"></script>
+</body></html>
