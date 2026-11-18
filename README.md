@@ -1,5 +1,7 @@
 # PointCloud Inspector · 点云巡检工作台
 
+**在线演示**：https://myzhgjb.github.io/pointcloud-inspector/
+
 浏览器里的三维点云标注与偏差分析工具：加载扫描点云 → 浏览与切片 → 查看偏差色谱 → 标注病害 → 出巡检报告。
 
 单文件前端，22.7 万点实时渲染 60 FPS，支持导入自有 `.ply` / `.xyz` / `.csv`。
